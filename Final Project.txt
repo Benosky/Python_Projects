@@ -1,0 +1,171 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Sep 04 23:32:23 2017
+
+@author: BENJAMIN
+"""
+
+# -*- coding: utf-8 -*-
+#=====================================================================================
+#Created on Mon Sep 04 12:29:03 2017
+
+#@author: BENJAMIN
+
+#Final Project: The Misbehavior of Markets
+#Project Outline
+
+#1.  Write a python program(s) to download end-of-day data last 25 years the major 
+#    global stock market indices from Google Finance, Yahoo Finance, Quandl, 
+#    CityFALCON, or another similar source.
+#2.  It is a common assumption in quantitative finance that stock returns follow 
+#    a normal distribution whereas prices follow a lognormal distribution. For all 
+#    these indices check how closely price movements followed a log-normal distribution.
+#3.  Verify whether returns from these broad market indices followed a normal 
+#    distribution?
+#4.  For each of the above two parameters (price movements and stock returns) come up 
+#    with specific statistical measures that clearly identify the degree of deviation 
+#    from the ideal distributions. Graphically represent the degree of correspondence.
+#5.  One of the most notable hypothesis about stock market behavior is the “Efficient 
+#    market hypothesis” which also internally assume that market price follows a 
+#    random-walk process. Assuming that Stock Index prices follow a geometric 
+#    Brownian motion and hence index returns were normally distributed with about 
+#    20% historical volatility, write a program sub-module to calculate the 
+#    probability of an event like the 1987 stock market crash happening ? Explain 
+#    in simple terms what the results imply.
+#6.  What does "fat tail" mean? Plot the distribution of price movements for the 
+#    downloaded indices (in separate subplot panes of a graph) and identify fat tail 
+#    locations if any.
+#7.  It is often claimed that fractals and multi-fractals generate a more realistic 
+#    picture of market risks than log-normal distribution. Considering last 10 year 
+#    daily price movements of NASDAQ, write a program to check whether 
+#    fractal geometrics could have better predicted stock market movements than 
+#    log-normal distribution assumption. Explain your findings with suitable graphs.
+
+
+#===================================================================================
+
+
+#Import necessary modules
+import numpy as np
+from pandas_datareader import data as pdr
+import fix_yahoo_finance as yf
+import pandas as pd
+import scipy.stats as stats
+import pylab as pl
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set(color_codes=True)
+
+#Write a python program(s) to download end-of-day data for last 25 years for the major 
+#global stock market indices from Google Finance, Yahoo Finance, Quandl, 
+#CityFALCON, or another similar source.
+
+yf.pdr_override()
+symb =["^DJI","^GSPC","IXIC","GDAXI","FTSE","HSI","KS11","^NSEI"]
+data =pdr.get_data_yahoo(symb, start="1992-09-02",end="2017-09-03")["Close"]
+
+#For all these indices check how closely price movements followed a log-normal distribution.
+#Test for the normality of the log of the price movements of the various indices
+
+print "Dow: Normaltest, pvalue",stats.normaltest(np.log(data["^DJI"]).dropna())
+print "S&P 500: Normaltest, pvalue",stats.normaltest(np.log(data["^GSPC"]).dropna())
+print "NASDAQ: Normaltest, pvalue",stats.normaltest(np.log(data["^IXIC"]).dropna())
+print "Dax: Normaltest, pvalue",stats.normaltest(np.log(data["^GDAXI"]).dropna())
+print "FTSE: Normaltest, pvalue",stats.normaltest(np.log(data["^FTSE"]).dropna())
+print "HANGSENG: Normaltest, pvalue",stats.normaltest(np.log(data["^HSI"]).dropna())
+print "KOSPI: Normaltest, pvalue",stats.normaltest(np.log(data["^KS11"]).dropna())
+print "CNX NIFTY: Normaltest, pvalue",stats.normaltest(np.log(data["^NSEI"]).dropna())
+
+#Verify whether returns(log returns) from these broad market indices followed a normal distribution?
+
+
+print "Dow: Normaltest, pvalue",stats.normaltest(np.diff(np.log(data["^DJI"]).dropna()))
+print "S&P 500: Normaltest, pvalue",stats.normaltest(np.diff(np.log(data["^GSPC"]).dropna()))
+print "NASDAQ: Normaltest, pvalue",stats.normaltest(np.diff(np.log(data["^IXIC"]).dropna()))
+print "Dax: Normaltest, pvalue",stats.normaltest(np.diff(np.log(data["^GDAXI"]).dropna()))
+print "FTSE: Normaltest, pvalue",stats.normaltest(np.diff(np.log(data["^FTSE"]).dropna()))
+print "HANGSENG: Normaltest, pvalue",stats.normaltest(np.diff(np.log(data["^HSI"]).dropna()))
+print "KOSPI: Normaltest, pvalue",stats.normaltest(np.diff(np.log(data["^KS11"]).dropna()))
+print "CNX NIFTY: Normaltest, pvalue",stats.normaltest(np.diff(np.log(data["^NSEI"]).dropna()))
+
+#For each of the above two parameters (price movements and stock returns) come up 
+#with specific statistical measures that clearly identify the degree of deviation 
+#from the ideal distributions. Graphically represent the degree of correspondence.
+
+
+#fit the ideal normal distribution
+n = stats.norm(loc=0,scale=1)
+generated=n.rvs(np.size(data["^DJI"]))
+ideal_d=stats.norm.fit(generated)
+
+#Checking the deviation of the log of price movements from the ideal distribution
+print "Kolmogorov Smirnov test Dow Prices & Ideal_d:25 years",stats.ks_2samp(np.log(data["^DJI"]).dropna(),ideal_d)
+print "Kolmogorov Smirnov test S&P Prices & Ideal_d:25 years",stats.ks_2samp(np.log(data["^GSPC"]).dropna(),ideal_d)
+print "Kolmogorov Smirnov test NASDAQ Prices & Ideal_d:25 years",stats.ks_2samp(np.log(data["^IXIC"]).dropna(),ideal_d)
+print "Kolmogorov Smirnov test Dax Prices & Ideal_d:25 years",stats.ks_2samp(np.log(data["^GDAXI"]).dropna(),ideal_d)
+print "Kolmogorov Smirnov test FTSE Prices & Ideal_d:25 years",stats.ks_2samp(np.log(data["^FTSE"]).dropna(),ideal_d)
+print "Kolmogorov Smirnov test HANGSENG Prices & Ideal_d:25 years",stats.ks_2samp(np.log(data["^HSI"]).dropna(),ideal_d)
+print "Kolmogorov Smirnov test KOSPI Prices & Ideal_d:25 years",stats.ks_2samp(np.log(data["^KS11"]).dropna(),ideal_d)
+print "Kolmogorov Smirnov test CNX NIFTY Prices & Ideal_d:25 years",stats.ks_2samp(np.log(data["^NSEI"]).dropna(),ideal_d)
+
+#Checking the deviation of the returns from the ideal distribution
+print "Kolmogorov Smirnov test Dow Returns & Ideal_d:25 years",stats.ks_2samp(np.diff(np.log(data["^DJI"]).dropna()),ideal_d)
+print "Kolmogorov Smirnov test S&P Returns & Ideal_d:25 years",stats.ks_2samp(np.diff(np.log(data["^GSPC"]).dropna()),ideal_d)
+print "Kolmogorov Smirnov test NASDAQ Returns & Ideal_d:25 years",stats.ks_2samp(np.diff(np.log(data["^IXIC"]).dropna()),ideal_d)
+print "Kolmogorov Smirnov test Dax Returns & Ideal_d:25 years",stats.ks_2samp(np.diff(np.log(data["^GDAXI"]).dropna()),ideal_d)
+print "Kolmogorov Smirnov test FTSE Returns & Ideal_d:25 years",stats.ks_2samp(np.diff(np.log(data["^FTSE"]).dropna()),ideal_d)
+print "Kolmogorov Smirnov test HANGSENG Returns & Ideal_d:25 years",stats.ks_2samp(np.diff(np.log(data["^HSI"]).dropna()),ideal_d)
+print "Kolmogorov Smirnov test KOSPI Returns & Ideal_d:25 years",stats.ks_2samp(np.diff(np.log(data["^KS11"]).dropna()),ideal_d)
+print "Kolmogorov Smirnov test CNX NIFTY Returns & Ideal_d:25 years",stats.ks_2samp(np.diff(np.log(data["^NSEI"]).dropna()),ideal_d)
+
+#Graphically represent the degree 0f correspondence of retrns
+sns.kdeplot(ideal_d)
+sns.kdeplot(np.diff(np.log(data["^DJI"]).dropna(),label="Dow Jones Returns"))
+sns.kdeplot(np.diff(np.log(data["^GSPC"]).dropna(),label="S&P 500 Returns"))
+sns.kdeplot(np.diff(np.log(data["^IXIC"]).dropna(), bw=2, label="NASDAQ Returns"))
+sns.kdeplot(np.diff(np.log(data["^GDAXI"]).dropna(), bw=2, label="DAX Returns"))
+sns.kdeplot(np.diff(np.log(data["^FTSE"]).dropna(), bw=2, label="FTSE Returns"))
+sns.kdeplot(np.diff(np.log(data["^HSI"]).dropna(), bw=2, label="HANGSENG Returns"))
+sns.kdeplot(np.diff(np.log(data["^KS11"]).dropna(), bw=2, label="KOSPI Returns"))
+sns.kdeplot(np.diff(np.log(data["^NSEI"]).dropna(), bw=2, label="CNX NIFTY Returns"))
+plt.legend()
+
+#Graphically represent the degree of correspondence of prices
+sns.kdeplot(ideal_d)
+sns.kdeplot(np.log(data["^DJI"]).dropna(),label="Dow Jones Returns")
+sns.kdeplot(np.log(data["^GSPC"]).dropna(),label="S&P 500 Returns")
+sns.kdeplot(np.log(data["^IXIC"]).dropna(), bw=2, label="NASDAQ Returns")
+sns.kdeplot(np.log(data["^GDAXI"]).dropna(), bw=2, label="DAX Returns")
+sns.kdeplot(np.log(data["^FTSE"]).dropna(), bw=2, label="FTSE Returns")
+sns.kdeplot(np.log(data["^HSI"]).dropna(), bw=2, label="HANGSENG Returns")
+sns.kdeplot(np.log(data["^KS11"]).dropna(), bw=2, label="KOSPI Returns")
+sns.kdeplot(np.log(data["^NSEI"]).dropna(), bw=2, label="CNX NIFTY Returns")
+plt.legend()
+
+
+#write a program sub-module to calculate the probability of an event like the 1987 
+#stock market crash happening ? Explain in simple terms what the results imply.
+
+
+
+
+#Plot the distribution of price movements for the downloaded indices 
+#(in separate subplot panes of a graph) and identify fat tail locations if any.
+sns.distplot(data["^DJI"], hist=False)
+sns.distplot(data["^GSPC"], hist=False)
+sns.distplot(data["^IXIC"], hist=False)
+sns.distplot(data["^GDAXI"], hist=False)
+sns.distplot(data["^FTSE"], hist=False)
+sns.distplot(data["^HSI"], hist=False)
+sns.distplot(data["^KS11"], hist=False)
+sns.distplot(data["^NSEI"], hist=False)
+
+
+#Fat tail is the tail of a probability distribution with significantly higher kurtosis 
+#than a normal distribution (which has kurtosis = 0). It represents relatively high 
+#probability of a relatively extreme outcome. The prices movements hardly exhibited any fat tail.
+
+
+
+
+#Checking the deviation of stock returns from the ideal distribution

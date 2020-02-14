@@ -1,0 +1,347 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 31 11:24:03 2018
+
+@author: benjaminumeh
+"""
+import pandas as pd
+from pandas import ExcelWriter
+import datetime
+import numpy as np
+
+
+"""
+
+def transmit(master,year,month,day):
+
+    """ '''master is the Master Data Spreadsheet; date is the last visst date in the format yyyy-mm-dd''' """
+    date = datetime.datetime(year,month,day, 0, 0)
+    prev_date = date - datetime.timedelta(days=7)
+    sales = [] #Units Sold in Period
+    xls = pd.ExcelFile(master)
+    req_sheets = xls.sheet_names[2:]
+    for s in range(0,len(req_sheets),3):
+        master_data_s = pd.DataFrame(xls.parse(req_sheets[s]))
+        #stock_bal = pd.read_csv("stockbalance.csv")
+        Location_ID = req_sheets[s][:-6]
+        #Create empty dataframe to hold the new data
+        stkbal_df_s = pd.DataFrame(index=master_data_s.index)
+        #assign the recent date 
+        #dt_list_s = list(master_data_s.columns.values)[-1]
+        first_clm_s = list(master_data_s.columns.values)[0]
+        if date in list(master_data_s.columns.values):
+            for i in range(len(stkbal_df_s)-1):
+                #if the unit value is not NaN
+                #if math.isnan(pd.to_numeric(master_data.loc[master_data.index[i],dt_list], errors='coerce')) ==False:
+                #if pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True
+                #if date == list(master_data_s.columns.values)[-1] and pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True:
+                if pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True:
+                    stkbal_df_s.loc[stkbal_df_s.index[i],'DATE'] = date
+                    stkbal_df_s.loc[stkbal_df_s.index[i],'Location ID'] = Location_ID
+                    stkbal_df_s.loc[stkbal_df_s.index[i],'Product ID'] = master_data_s.loc[master_data_s.index[i],first_clm_s]
+                    stkbal_df_s.loc[stkbal_df_s.index[i],'PRODUCT NAME'] = master_data_s.loc[master_data_s.index[i],'Product Name']
+                    stkbal_df_s.loc[stkbal_df_s.index[i],'Metric'] = 'Units Sold in Period'
+                    stkbal_df_s.loc[stkbal_df_s.index[i],'Unit Value'] = int(master_data_s.loc[master_data_s.index[i],date])
+                    #stkbal_df = stkbal_df[np.isfinite(stkbal_df['Unit Value'])]
+                #stkbal_df = stkbal_df.dropna()
+                #stkbal_df_s = stkbal_df_s.reset_index(drop=True)
+                stkbal_df_s
+        sales.append(stkbal_df_s)
+        sold = pd.concat(sales).dropna()
+        res_s = sold.reset_index(drop=True)
+    res_s
+    op_bal_pp = [] #Opening balance from previous period
+    #xls = pd.ExcelFile('(Shelf Life) Master Data New.xlsx')
+    #req_sheets = xls.sheet_names[2:]
+    for ob in range(2,len(req_sheets),3):
+        master_data_ob = pd.DataFrame(xls.parse(req_sheets[ob]))
+        #stock_bal = pd.read_csv("stockbalance.csv")
+        Location_ID_ob = req_sheets[ob][:-7]
+        #Create empty dataframe to hold the new data
+        stkbal_df_ob = pd.DataFrame(index=master_data_ob.index)
+        #assign the recent date 
+        #dt = list(master_data_ob.columns.values)
+        #dt_list_ob = dt[-1]
+        first_clm_ob = list(master_data_ob.columns.values)[0]
+        if date in list(master_data_ob.columns.values):
+            for j in range(len(stkbal_df_ob)-1):
+                #if the unit value is not NaN
+                #if math.isnan(pd.to_numeric(master_data.loc[master_data.index[i],dt_list], errors='coerce')) ==False:
+                #if date == list(master_data_ob.columns.values)[-1] and pd.notnull(master_data_ob.loc[master_data_ob.index[i],date]) is True:
+                #if pd.notnull(master_data_ob.loc[master_data_ob.index[j],dt[-2]]) is True:
+                if pd.notnull(master_data_ob.loc[master_data_ob.index[i],prev_date]) is True:
+                    stkbal_df_ob.loc[stkbal_df_ob.index[j],'DATE'] = date
+                    stkbal_df_ob.loc[stkbal_df_ob.index[j],'Location ID'] = Location_ID_ob
+                    stkbal_df_ob.loc[stkbal_df_ob.index[j],'Product ID'] = master_data_ob.loc[master_data_ob.index[j],first_clm_ob]
+                    stkbal_df_ob.loc[stkbal_df_ob.index[j],'PRODUCT NAME'] = master_data_ob.loc[master_data_ob.index[j],'Product Name']
+                    stkbal_df_ob.loc[stkbal_df_ob.index[j],'Metric'] = 'Opening balance from previous period'
+                    stkbal_df_ob.loc[stkbal_df_ob.index[j],'Unit Value'] = pd.to_numeric(master_data_ob.loc[master_data_ob.index[j],prev_date],errors = 'coerce')
+                    #stkbal_df = stkbal_df[np.isfinite(stkbal_df['Unit Value'])]
+                #stkbal_df = stkbal_df.dropna()
+                #stkbal_df_ob = stkbal_df_ob.reset_index(drop=True)
+                stkbal_df_ob
+        op_bal_pp.append(stkbal_df_ob)
+        op_df = pd.concat(op_bal_pp).dropna()
+        res_ob = op_df.reset_index(drop=True)
+    res_ob
+    given = [] #Units given/dispensed
+    #xls = pd.ExcelFile('(Shelf Life) Master Data New.xlsx')
+    #req_sheets = xls.sheet_names[2:]
+    for ds in range(1,len(req_sheets),3):
+        master_data_ds = pd.DataFrame(xls.parse(req_sheets[ds]))
+        #stock_bal = pd.read_csv("stockbalance.csv")
+        Location_ID_ds = req_sheets[ds][:-6]
+        #Create empty dataframe to hold the new data
+        stkbal_df_ds = pd.DataFrame(index=master_data_ds.index)
+        #assign the recent date 
+        #dt_list_ds = list(master_data_ds.columns.values)[-1]
+        first_clm_ds = list(master_data_ds.columns.values)[0]
+        if date in list(master_data_ds.columns.values):
+            for k in range(len(stkbal_df_ds)-1):
+                #if the unit value is not NaN
+                #if math.isnan(pd.to_numeric(master_data.loc[master_data.index[i],dt_list], errors='coerce')) ==False:
+                #if pd.notnull(master_data_ds.loc[master_data_ds.index[k],date]) is True:
+                #if date == list(master_data_ds.columns.values)[-1] and pd.notnull(master_data_ds.loc[master_data_ds.index[i],date]) is True:
+                if pd.notnull(master_data_ds.loc[master_data_ds.index[i],date]) is True:
+                    stkbal_df_ds.loc[stkbal_df_ds.index[k],'DATE'] = date
+                    stkbal_df_ds.loc[stkbal_df_ds.index[k],'Location ID'] = Location_ID_ds
+                    stkbal_df_ds.loc[stkbal_df_ds.index[k],'Product ID'] = master_data_ds.loc[master_data_ds.index[k],first_clm_ds]
+                    stkbal_df_ds.loc[stkbal_df_ds.index[k],'PRODUCT NAME'] = master_data_ds.loc[master_data_ds.index[k],'Product Name']
+                    stkbal_df_ds.loc[stkbal_df_ds.index[k],'Metric'] = 'Units given/dispensed'
+                    stkbal_df_ds.loc[stkbal_df_ds.index[k],'Unit Value'] = master_data_ds.loc[master_data_ds.index[k],date]
+                    #stkbal_df = stkbal_df[np.isfinite(stkbal_df['Unit Value'])]
+                #stkbal_df = stkbal_df.dropna()
+                stkbal_df_ds = stkbal_df_ds.reset_index(drop=True)
+                stkbal_df_ds
+        given.append(stkbal_df_ds)
+        giv_df = pd.concat(given).dropna()
+        res_ds = giv_df.reset_index(drop=True)
+    res_ds
+    full_df = pd.concat([res_s,res_ob,res_ds]).dropna()
+    res_full_df = pd.DataFrame(full_df)
+    res_full_df.reset_index(drop=True)
+    return res_full_df
+
+    trans_data = transmit('(Shelf Life) Master Data New.xlsx',2018,7,23)
+    print trans_data
+    
+    writer = ExcelWriter('Stockbalance-2018-07-20 (2) Without Prices.xlsx')
+    trans_data.to_excel(writer,'Sheet1',index=False)
+    writer.save()
+  """
+if __name__ == '__main__':
+    def transmit_whole(master,date):
+    
+        """ '''master is the Master Data Spreadsheet; date is the last visst date in the format yyyy-mm-dd''' """
+        #date = datetime.datetime(year,month,day, 0, 0)
+        #prev_date = date - datetime.timedelta(days=7)
+        sales = [] #Units Sold in Period
+        xls = pd.ExcelFile(master)
+        req_sheets = xls.sheet_names[2:]
+        for s in range(0,len(req_sheets),3):
+            master_data_s = pd.DataFrame(xls.parse(req_sheets[s]))
+            #stock_bal = pd.read_csv("stockbalance.csv")
+            Location_ID = req_sheets[s][:-6]
+            #Create empty dataframe to hold the new data
+            stkbal_df_s = pd.DataFrame(index=master_data_s.index)
+            #assign the recent date 
+            #dt_list_s = list(master_data_s.columns.values)[-1]
+            first_clm_s = list(master_data_s.columns.values)[0]
+            if date in list(master_data_s.columns.values):
+                for i in range(len(stkbal_df_s)-1):
+                    #if the unit value is not NaN
+                    #if math.isnan(pd.to_numeric(master_data.loc[master_data.index[i],dt_list], errors='coerce')) ==False:
+                    #if pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True
+                    #if date == list(master_data_s.columns.values)[-1] and pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True:
+                    if pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True:
+                        stkbal_df_s.loc[stkbal_df_s.index[i],'DATE'] = date
+                        stkbal_df_s.loc[stkbal_df_s.index[i],'Location ID'] = Location_ID
+                        stkbal_df_s.loc[stkbal_df_s.index[i],'Product ID'] = master_data_s.loc[master_data_s.index[i],first_clm_s]
+                        stkbal_df_s.loc[stkbal_df_s.index[i],'PRODUCT NAME'] = master_data_s.loc[master_data_s.index[i],'Product Name']
+                        stkbal_df_s.loc[stkbal_df_s.index[i],'Metric'] = 'Units Sold in Period'
+                        stkbal_df_s.loc[stkbal_df_s.index[i],'Unit Value'] = int(master_data_s.loc[master_data_s.index[i],date])
+                        #stkbal_df = stkbal_df[np.isfinite(stkbal_df['Unit Value'])]
+                    #stkbal_df = stkbal_df.dropna()
+                    #stkbal_df_s = stkbal_df_s.reset_index(drop=True)
+                    stkbal_df_s.reset_index(drop=True)
+                sales.append(stkbal_df_s)
+            sold = pd.concat(sales).dropna()
+            res_s = sold.reset_index(drop=True)
+        res_s
+        given = [] #Units given/dispensed
+        #xls = pd.ExcelFile('(Shelf Life) Master Data New.xlsx')
+        #req_sheets = xls.sheet_names[2:]
+        for ds in range(1,len(req_sheets),3):
+            master_data_ds = pd.DataFrame(xls.parse(req_sheets[ds]))
+            #stock_bal = pd.read_csv("stockbalance.csv")
+            Location_ID_ds = req_sheets[ds][:-6]
+            #Create empty dataframe to hold the new data
+            stkbal_df_ds = pd.DataFrame(index=master_data_ds.index)
+            #assign the recent date 
+            #dt_list_ds = list(master_data_ds.columns.values)[-1]
+            first_clm_ds = list(master_data_ds.columns.values)[0]
+            if date in list(master_data_ds.columns.values):
+                for k in range(len(stkbal_df_ds)-1):
+                    #if the unit value is not NaN
+                    #if math.isnan(pd.to_numeric(master_data.loc[master_data.index[i],dt_list], errors='coerce')) ==False:
+                    #if pd.notnull(master_data_ds.loc[master_data_ds.index[k],date]) is True:
+                    #if date == list(master_data_ds.columns.values)[-1] and pd.notnull(master_data_ds.loc[master_data_ds.index[i],date]) is True:
+                    if pd.notnull(master_data_ds.loc[master_data_ds.index[k],date]) is True:
+                        stkbal_df_ds.loc[stkbal_df_ds.index[k],'DATE'] = date
+                        stkbal_df_ds.loc[stkbal_df_ds.index[k],'Location ID'] = Location_ID_ds
+                        stkbal_df_ds.loc[stkbal_df_ds.index[k],'Product ID'] = master_data_ds.loc[master_data_ds.index[k],first_clm_ds]
+                        stkbal_df_ds.loc[stkbal_df_ds.index[k],'PRODUCT NAME'] = master_data_ds.loc[master_data_ds.index[k],'Product Name']
+                        stkbal_df_ds.loc[stkbal_df_ds.index[k],'Metric'] = 'Units given/dispensed'
+                        stkbal_df_ds.loc[stkbal_df_ds.index[k],'Unit Value'] = master_data_ds.loc[master_data_ds.index[k],date]
+                        #stkbal_df = stkbal_df[np.isfinite(stkbal_df['Unit Value'])]
+                    #stkbal_df = stkbal_df.dropna()
+                    #stkbal_df_ds = stkbal_df_ds.reset_index(drop=True)
+                    stkbal_df_ds.reset_index(drop=True)
+                given.append(stkbal_df_ds)
+            giv_df = pd.concat(given).dropna()
+            res_ds = giv_df.reset_index(drop=True)
+        res_ds
+        comp_list = [res_s,res_ds]
+        full_df = pd.concat(comp_list)#.dropna()
+        res_full_df = pd.DataFrame(full_df)
+        #full_res = res_full_df.reset_index(drop=True)
+        return res_full_df
+    
+    dat = pd.read_excel('(Shelf Life) Master Data New.xlsx', sheetname='Ril Levels')
+    master_data = pd.DataFrame(dat)#.fillna(0)
+    #t_df = master_data.T
+    #print t_df
+    #stock_bal = pd.read_csv("stockbalance.csv")
+    date_list = list(master_data.columns.values)[3:]
+    last_six_wks = date_list[-9:]
+    all_df_list = []
+    for dl in last_six_wks:
+        dt_df = transmit_whole('(Shelf Life) Master Data New.xlsx',dl)
+        all_df_list.append(dt_df)
+    data_con = pd.concat(all_df_list).dropna()
+    data_df = pd.DataFrame(data_con)
+    data_df.reset_index(drop=True)
+    #data_df.sort_values(['Product ID','Location ID'], ascending=[True, True])
+    writer = ExcelWriter('Whole Stockbalance-Last_Six_Wks.xlsx')
+    data_df.to_excel(writer,'Sheet1',index=False)
+    writer.save()
+
+    
+    
+    
+    
+        
+    """
+    test = transmit_whole('(Shelf Life) Master Data New.xlsx',datetime.datetime(2018, 7, 06, 0, 0))
+    print test.dropna()
+    writer = ExcelWriter('Test Stockbalance.xlsx')
+    test.to_excel(writer,'Sheet1',index=False)
+    writer.save()
+    
+    dat = pd.read_excel('(Shelf Life) Master Data New.xlsx', sheetname='Ril Levels')
+    master_data = pd.DataFrame(dat)#.fillna(0)
+    #t_df = master_data.T
+    #print t_df
+    #stock_bal = pd.read_csv("stockbalance.csv")
+    date_list = list(master_data.columns.values)[3:]
+    last_six_wks = date_list[-9:]
+    all_df_list = []
+    for dl in last_six_wks:
+        dt_df = transmit_whole('(Shelf Life) Master Data New.xlsx',dl)
+        all_df_list.append(dt_df)
+    data_con = pd.concat(all_df_list).dropna()
+    data_df = pd.DataFrame(data_con)
+    data_df.reset_index(drop=True)
+    #data_df.sort_values(['Product ID','Location ID'], ascending=[True, True])
+    writer = ExcelWriter('Whole Stockbalance-Last_Six_Wks.xlsx')
+    data_df.to_excel(writer,'Sheet1',index=False)
+    writer.save()
+    
+
+    #print date_list
+    prod_list = master_data['Product Name'][:-4]
+    indx_list = list(np.arange(len(prod_list)*len(date_list)))
+    len(indx_list)
+    #tf = list(np.arange(30))
+
+    date_list = list(master_data_s.columns.values)
+    transmit_whole('(Shelf Life) Master Data New.xlsx',year,month,day)
+
+    
+    
+    
+    date = datetime.datetime(2018,07,23, 0, 0)
+    prev_date = date - datetime.timedelta(days=7)
+    sales = [] #Units Sold in Period
+    xls = pd.ExcelFile('(Shelf Life) Master Data New.xlsx')
+    req_sheets = xls.sheet_names[2:]
+    for s in range(0,len(req_sheets),3):
+    master_data_s = pd.DataFrame(xls.parse(req_sheets[s]))
+    #stock_bal = pd.read_csv("stockbalance.csv")
+    Location_ID = req_sheets[s][:-6]
+    #Create empty dataframe to hold the new data
+    stkbal_df_s = pd.DataFrame(index=master_data_s.index)
+    #assign the recent date 
+    #dt_list_s = list(master_data_s.columns.values)[-1]
+    first_clm_s = list(master_data_s.columns.values)[0]
+    if date in list(master_data_s.columns.values):
+        for i in range(len(stkbal_df_s)-1):
+            #if the unit value is not NaN
+            #if math.isnan(pd.to_numeric(master_data.loc[master_data.index[i],dt_list], errors='coerce')) ==False:
+            #if pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True
+            #if date == list(master_data_s.columns.values)[-1] and pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True:
+            if pd.notnull(master_data_s.loc[master_data_s.index[i],date]) is True:
+                stkbal_df_s.loc[stkbal_df_s.index[i],'DATE'] = date
+                stkbal_df_s.loc[stkbal_df_s.index[i],'Location ID'] = Location_ID
+                stkbal_df_s.loc[stkbal_df_s.index[i],'Product ID'] = master_data_s.loc[master_data_s.index[i],first_clm_s]
+                stkbal_df_s.loc[stkbal_df_s.index[i],'PRODUCT NAME'] = master_data_s.loc[master_data_s.index[i],'Product Name']
+                stkbal_df_s.loc[stkbal_df_s.index[i],'Metric'] = 'Units Sold in Period'
+                stkbal_df_s.loc[stkbal_df_s.index[i],'Unit Value'] = int(master_data_s.loc[master_data_s.index[i],date])
+                #stkbal_df = stkbal_df[np.isfinite(stkbal_df['Unit Value'])]
+            #stkbal_df = stkbal_df.dropna()
+            #stkbal_df_s = stkbal_df_s.reset_index(drop=True)
+            stkbal_df_s
+    sales.append(stkbal_df_s)
+    sold = pd.concat(sales).dropna()
+    res_s = sold.reset_index(drop=True)
+    res_s
+    
+    
+    #Read the excel file of the raw data and load it into a pandas dataframe
+    dat = pd.read_excel('(Shelf Life) Master Data New.xlsx', sheetname='Maxi Sales')
+    master_data = pd.DataFrame(dat)#.fillna(0)
+    #t_df = master_data.T
+    #print t_df
+    #stock_bal = pd.read_csv("stockbalance.csv")
+    date_list = list(master_data.columns.values)[6:]
+    #print date_list
+    prod_list = master_data['Product Name'][:-4]
+    indx_list = list(np.arange(len(prod_list)*len(date_list)))
+    len(indx_list)
+    #tf = list(np.arange(30))
+    
+    #print prod_list
+    data_fig = pd.DataFrame()
+    for f,dats in enumerate(date_list):
+    for d in range(len(prod_list)):
+        data_fig.loc[f,'Date'] = dats
+    print data_fig
+    
+        
+        if pd.notnull(master_data.iloc[master_data.index[i],date]) is True: 
+    
+    
+    
+    xls = pd.ExcelFile('(Shelf Life) Master Data New.xlsx')
+    req_sheets = xls.sheet_names[2:]
+    for s in range(0,len(req_sheets),3):
+    master_data_s = pd.DataFrame(xls.parse(req_sheets[s]))
+    date_list = list(master_data_s.columns.values)
+    prod_list = master_data_s['Product Name'][1]
+    
+    prod_list
+    
+    
+    date_list
+    """

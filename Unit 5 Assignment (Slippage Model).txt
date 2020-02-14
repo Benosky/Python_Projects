@@ -1,0 +1,61 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Dec 04 01:44:38 2017
+
+@author: BENJAMIN
+"""
+
+#SLIPPAGE MODEL
+import numpy as np
+from pandas_datareader import data as pdr
+from pandas import DataFrame
+import fix_yahoo_finance as yf
+
+yf.pdr_override()
+tickers =["^DJI"]
+data = pdr.get_data_yahoo(tickers, start="2017-12-3",end="2017-12-4")
+
+def calc_slippage(x,y,z):
+    """ x is stock symbol, y is the start date in the format yyyy-mm-dd 
+    z is the end date in the format yyy-mm-dd. Requires the importation of 
+    numpy as np and DataFrame from pandas"""
+    yf.pdr_override()
+    x =pdr.get_data_yahoo(x, start="y",end="z")
+    data = DataFrame(x)
+    data['Signal'] = np.where(data['Close -20 DEMA'] > 0, 1, 0)
+    data['Signal'] = np.where(data['Close -20 DEMA'] < 0, -1, data['Signal'])
+    o = data["Open"][-1]
+    h = data["High"][-1]
+    l = data["Low"][-1]
+    c = data["Close"][-1]
+    v = data['Volume'][-1]
+    bb = np.mean((((data['High']+data['Low'])/2)+data['Low'])/2) #Best_Bid
+    ba = np.mean((((data['High']+data['Low'])/2)+data['High'])/2) #Best_Ask
+    hbq = data['Signal'].value_counts()[1] #Highest_Bid_Quantity
+    haq = data['Signal'].value_counts()[-1] #Highest_Ask_Quantity
+    bop = ba * haq #Theoretical buy order position
+    sop = bb * hbq #Theoretical sell order position
+    fbq = v * (haq/(haq+hbq))*100 #Final buy quantity
+    fsq = v * (hbq/(haq+hbq))*100 #Final sell quantity
+    wpb = h * fbq # Worst possible buy position
+    wps = l * fsq # Worst possible sell position
+    wbdiff = wpb - bop # Worst buy difference
+    wsdiff = wps - sop # Worst sell difference 
+    if c<0:
+        fbp1 = fbq * o #final buy position 1
+        fsp1 = fsq * c #final sell position 1
+        bdiff1 = fbp1 - bop # buy order difference 1
+        sdiff1 = fsp1 - sop # sell order difference 1
+        b_slippage1 = bdiff1/wbdiff # Buy order slippage 1
+        s_slippage1 = sdiff1/wsdiff # Sell order slippage 1
+        print "Buy Order slippage is",b_slippage1
+        print "Sell order slippage is",s_slippage1
+    else:
+        fbp2 = fbq * c # final buy position 2
+        fsp2 = fsq * o # final sell position 2
+        bdiff2 = fbp2 - bop #buy order difference 2
+        sdiff2 = fsp2 - sop #sell order difference 2
+        b_slippage2 = bdiff2/wbdiff # Buy order slippage 2
+        s_slippage2 = sdiff2/wsdiff # Sell order slippage 2
+        print "Buy Order slippage is",b_slippage2
+        print "sell Order slippage is",s_slippage2

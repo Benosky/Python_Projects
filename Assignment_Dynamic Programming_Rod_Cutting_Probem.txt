@@ -1,0 +1,55 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jan 20 08:52:32 2018
+
+@author: win8
+"""
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jan 20 05:01:45 2018
+
+@author: win8
+"""
+
+#Problem 1:   Rod-Cutting problem with more constraints
+
+# The function returns, for each rod of size n, the maximum revenue adjusted for the 
+# fixed cost, c, of making each cut, and the optimal size of the first piece to cut 
+# off to arrive at the maximum revenue
+
+import sys
+
+def Optimal_Cut_Rod(p,n,c):
+    """ p is an array of prices of rod pieces of length 1...n, and c is the fixed
+    cost of making each cut."""
+    rev = [0 for x in range(n+1)] #revenue
+    size = [0 for x in range(n+1)] #rod sizes
+    rev[0] = 0 # the revenue for a zero length rod is zero
+    # compute the maximum revenue, max_rev, and the optimal size, opt_size in a bottom up manner and return 
+    # max_rev and opt_size
+    for j in range(1,n+1):
+        max_rev = -sys.maxsize
+        for i in range(1,j):
+            if max_rev<p[i]+(rev[j-i]-c):   #The fixed cost, c, of making each cut is deducted from the revenue
+                max_rev = p[i]+(rev[j-i]-c)
+                size[j] = i
+            rev[j] = max_rev
+    return rev, size
+
+# Call the Optimal_Cut_Rod function to compute the array s[1...n] of optimal first-piece
+# sizes and then print out the complete list of pieces sizes in an optimal decomposition
+# of a rod of length n with fixed cutting cost c
+
+def Cut_Rod_Solution(p,n,c):
+    r,s = Optimal_Cut_Rod(p,n,c)
+    while n>0:
+        n = n-s[n]
+    print s[n]
+# Example
+
+p = [1,5,8,9,10,17,17,20,24,30]
+n = 10
+c = 0.2
+
+Cut_Rod_Solution(p,n,c)       

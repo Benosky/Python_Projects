@@ -1,0 +1,326 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Mar 29 15:25:42 2018
+
+@author: win8
+"""
+if __name__ == '__main__':
+    # =============================================================================
+    # Risk management: Project 2 
+    
+    #I. Download data for last 5 years Dow Jones Industrial Average futures contract â€“ consider the nearest month expiry always.
+    
+    ## Import necessary modules
+    import numpy as np
+    import pandas as pd
+    import datetime as dt
+    from datetime import timedelta
+    import calendar
+    import mibian   # To use this library, either execute "pip install mibian" at the Anaconda Prompt or download from http://code.mibian.net/
+    import matplotlib.pylab as plt
+    from pandas_datareader import data as pdr
+    import fix_yahoo_finance as yf
+    import pylab 
+    from Compute_KPI_OutputClass import Output
+    
+    # Get stock data from Yahoo Finance - package fix_yahoo_finance is a fix for 
+    # Yahoo Finance issues with API
+    yf.pdr_override()
+    
+    # for the project we need DJI levels
+    ticker_index = '^DJI'
+    
+    # set period
+    end = dt.datetime(2018, 05 ,8)
+    start = dt.date(end.year-5, end.month, end.day)
+    
+    # download DJIA prices
+    df = pdr.get_data_yahoo(ticker_index, start, end)
+    
+    # plot DJIA  
+    plt.plot(df['Adj Close'], label = 'DJIA')
+    plt.legend()
+    plt.show()
+    
+    #II. Also download relevant Options data for DJIA â€“ consider the earliest expiry Put Option contract that is just at-the-money (ATM)
+    # Again, Yahoo may not not support downloading Options data for DJIA and no free source may be available
+    # If so, then compute options data yourself - below is one approach to do so for Put Options
+    
+    # using code from starter pack we amend it and  built upon in the first half of the project
+    
+    # Take Out-of-Money strick price (X) based on stepsize of N points
+    N_step = 250               # Assume stepsize of N points
+    N_trading_per_year = 252   # Number of trading days in one year excluding holidays and weekends
+    N_per_year = 365           # Number of days in a calendar year
+    N_per_month = 30           # Nubmer of days in a calendar month
+    N_per_week = 7             # Number of days in a calendar week
+    N_per_two_weeks = 14       # Number of days in calendar two weeks
+    N_Friday = 4               # Number for Friday
+    
+    Strike  = "Strike"         # Add new column for strike price
+    Sigma   = "Volatility"     # Add new column for 30-day volatility
+    Expire  = "Expires"        # Add new column for option expiration date
+    Open = 'Open'
+    Close   = "Adj Close"      # Adjusted closing price used to compute strike price and volatility
+    
+    # Compute and store stike price and volatility and save as new column
+    df[Strike] = ((df[Close]-N_step/2)/N_step).round()*N_step
+    df[Sigma] = df[Close].pct_change().rolling(N_per_month).std()*np.sqrt(N_trading_per_year)
+    
+    df.dropna(inplace = True)
+    
+    plt.plot(df[Sigma])
+    plt.title('Index volatility')
+    plt.show()
+    
+    # copied from started code
+    # Function: get_expire_dates - Compute days to expiration
+    #
+    # Input:  dates - list of dates
+    # Output: expire_date_list - list of expiration dates
+    
+    def get_expire_days(dates):
+        expire_date_list = [] # Start with empty list
+        
+        # For each row (day), determine option expiration date  (do two weeks from 1st to 3rd friday of the month -- of course, this can be adjusted)  
+        for name in dates:
+            now = name                                                      # Current date
+            if now.month < 12:
+                next_month = now.month + 1
+                year = now.year
+            else:
+                next_month = 1
+                year = now.year + 1
+            first_day_of_month = dt.datetime(year, next_month, 1)  # Save 1st day of month
+            first_friday = first_day_of_month + timedelta(days=((N_Friday-calendar.monthrange(year,next_month)[0]) + N_per_week) % N_per_week) # 1st Friday
+            third_friday = first_friday + timedelta(days=N_per_two_weeks)   # 3rd Friday
+            if third_friday >= now: 
+                expire_date_list.append(third_friday)                           # Add 2-week expiration date to table
+            else:
+                expire_date_list.append(np.nan)
+        return expire_date_list
+    
+    # Add expiration date of option (default is 2 weeks)
+    expire_dates_list = get_expire_days(df.index)
+    expire_dates_df = pd.DataFrame(data = expire_dates_list, index = df.index)
+    expire_dates_df = expire_dates_df.fillna(method = 'bfill')
+    expire_dates_df.columns = ['Expires']
+    
+    df = df.merge(expire_dates_df, left_index = True, right_index = True)
+    
+    strike_price = df.groupby('Expires')['Strike'].mean()
+    
+    # fill out each date with strike price for current option
+    for cnt,idx in enumerate(df.index):
+        idx_locator = df.loc[idx]['Expires']
+        df.loc[idx,'Strike'] = strike_price[idx_locator] # write out located strike price against current date
+    
+    # Pick the month to compute put option prices - in this case, Aug 2017 
+    My_Month_Choice = "August 2017"  # Pick a month to examine - Aug 2017
+    
+    # Get ready to add put options columns to table (price, mibian price, delta, and hedge)
+    Put_M_open = "put_price_mibian_open"      # Mibian put price field name
+    Put_D_open = "put_delta_open"             # Put delta field name
+    Put_H_open = "put_hedge_open"             # Put hedge field name
+    
+    Put_M_close = "put_price_mibian_close"      # Mibian put price field name
+    Put_D_close = "put_delta_close"             # Put delta field name
+    Put_H_close = "put_hedge_close"             # Put hedge field name
+    
+    # Calculate put option price (can do the same for call option price)
+    for row in df.index:
+        # calculate opening put prices, deltas and put_hedge
+        S_open = df.loc[row, Open]    # Open Price
+        S_close = df.loc[row, Close]    # Close Price
+        K = df.loc[row, Strike]   # Strike Price
+        r = 0.01                  # Interest Free Rate
+        v = df.loc[row, Sigma]    # Computed Volatility (30 days)
+        T = (df.loc[row, Expire] - row).days # Time to expiration in days
+        
+        # If non-zero volatility, compute the put option prices and delta
+        if v > 0:
+            if T > 0:
+                p_open = mibian.BS([S_open, K, r * 100, T], volatility=v * 100)
+                df.loc[row, Put_M_open] = p_open.putPrice
+                df.loc[row, Put_D_open] = p_open.putDelta
+                
+                p_close = mibian.BS([S_close, K, r*100, T], volatility=v * 100)
+                df.loc[row, Put_M_close] = p_close.putPrice
+                df.loc[row, Put_D_close] = p_close.putDelta
+                
+            else:
+                df.loc[row, Put_M_open] = 0
+                df.loc[row, Put_D_open] = 0
+        
+                df.loc[row, Put_M_close] = 0
+                df.loc[row, Put_D_close] = 0
+    
+    # III. Consider any particular trading month during the past 2 years (choose a month with few holidays).  Start trading on 1st day of the trading month.
+    df[Put_H_open] = np.round(df[Put_D_open]*100,1)  # Hedge the delta
+    df[Put_H_close] = np.round(df[Put_D_close]*100,1)  # Hedge the delta
+    
+    
+    # IV. Consider that the trader has an initial position of SHORT Position of 100 
+            #at-the-money Put Options of DJIA at the end-of-trading on the last trading 
+            #session (mostly a Friday, WorldQuant University, 2014 Page 2 unless Friday 
+            #was a holiday) before the beginning of the Monday on which we start trading.
+    
+    #Create a DJI daily returns column
+    df['dji_daily_return'] = df['Close'].pct_change()
+    my_df = df.loc[My_Month_Choice]         # View first rows of hedging
+    #total number of dji futures covered by the 100 options
+    num_fut = 10000 #100 Put Options * 100 multiplier
+    
+    # V. If the earliest expiry Options/Futures contract expire midway into the month, 
+            #roll your positions over to the next contract
+            
+    # VI. Given the spot price of DJIA at close on the last day of trading before the 
+            #current Monday, calculate the initial Delta of the SHORT Option Position. 
+            #This initial delta would provide an estimate of the overall Risk exposure 
+            #of the SHORT Option Position.
+    
+    #calculate the initial Delta of the SHORT Option Position.
+    
+    #change in options price as at the given date
+    chg_op_price = df.loc['2017-07-31']["put_price_mibian_close"] - df.loc['2017-07-31']["put_price_mibian_open"]
+    
+    #change in underlying stock price as at the given date
+    chg_st_price = df.loc['2017-07-31']["Close"] - df.loc['2017-07-31']["Open"]
+    
+    #initial delta
+    ini_delta = float(chg_op_price)/chg_st_price
+    
+    #since we are shorting the put options we multiply the initial delta by negative 1 to get the short put option delta
+    sht_ini_delta = ini_delta*(-1)
+    print "\nThe initial delta is",sht_ini_delta
+    
+    # VII. To delta hedge the short put, calculate the number of DJIA Futures contract 
+            #(earliest expiry) the trader needs to buy/sell at the beginning of Trading 
+            #on Monday. The idea is that the deltas of the short option and the short 
+            #stock would cancel, yielding an overall delta of zero.
+        
+    #number of DJIA Futures contract the trader needs to buy/sell at the beginning of Trading on Monday
+    num_dj_fut = num_fut * sht_ini_delta
+    print "\nThe number of DJIA Futures contract(earliest expiry) the trader needs to buy/sell at the beginning of Trading on Monday is",num_dj_fut,"\n"
+    
+    # VIII. Then on, track the underlying spot price twice every day â€“ just after 
+            #market open and just before market close to adjust your delta hedge positions 
+            #by buying or selling the required number of futures contracts
+    
+    #The rate of change in delta as a result of a change in the underlying spot price
+    #is the gamma of the option. So, we create a column for the position gamma in 
+    #the dataframe of our month of choice data multiply the deltas by -1 to reflect 
+    #the short position
+    my_df['Gamma'] = (-1*my_df['put_delta_close']-(-1*my_df['put_delta_open']))/(my_df['Close']-my_df['Open'])
+
+    #create a column for the delta hedge position in the dataframe our month of choice data
+    
+    #create an empty list to hold the values of the delta hedge positions
+    hdg_list =[]
+    for x in my_df['Gamma']:
+        adjst = num_dj_fut + (num_dj_fut*x)
+        num_dj_fut = adjst
+        hdg_list.append(adjst)
+    #assign the list of the delta hedge psoition value to a column in our dataframe
+    my_df['delta_hedge_position'] = hdg_list
+    
+    #calculate the short dji futures returns
+    
+    #Calculating the value of the short futures position by multiplying the delta 
+    #hedge position by the close spot prices and create a column for it
+    my_df['short_fut_value'] = my_df['delta_hedge_position'] * my_df['Close']
+    
+    #calculate the percentatge change in the value of the short futures position and 
+    #multiply with -1 to arrive at the return on the short put
+    my_df['short_fut_returns'] = (-1)*(my_df['dji_daily_return'].pct_change())
+    
+    # IX. Continue the dynamic hedging process till the last trading day of the month
+    
+    #calculate the initial dynamic hedge
+    ini_dyn = num_dj_fut * my_df['Gamma'][0]
+    #create a list of all the dynamic hedges and insert the initial dynamic hedge
+    dyn_list =[ini_dyn]
+    for i in range(1,len(my_df['delta_hedge_position'])):
+        y = my_df['delta_hedge_position']
+        dyn_adj = y[i] - y[i-1]
+        dyn_list.append(dyn_adj)
+        
+    #create dynamic hedge column in the original dataframe
+    my_df['Dynamic Hedge'] = dyn_list
+    #calculate the returns of the un-hedged portfolio and create a column for it
+    my_df['Un-Hedged_Port_Returns'] = my_df['put_price_mibian_close'].pct_change()
+    #calculate the returns of the hedged portfolio and create a column for it
+    my_df['Hedged_Port_Returns'] = my_df['short_fut_returns'] + my_df['Un-Hedged_Port_Returns']
+    #slice out the returns of the hedged and un-hedged portfolios
+    results = my_df.loc[:,['Un-Hedged_Port_Returns','Hedged_Port_Returns']]
+    #print the returns of the hedged and un-hedged portfolios
+    print "\n====Returns of Hedged and Un-hedged Portfolios====\n"
+    print results
+    
+    column_names = ["Un-hedged_Port_Risk","Hedged_Port_Risk"]
+    risks = results.rolling(3).std().dropna()
+    risks.columns = column_names
+
+    # X. Graphically represent the risk and return profiles of the unhedged and hedged portfolios
+    
+    #calculate the cumulative quantity of futures contracts that were required to
+    # dynamically hedge the portfolio
+    
+    my_df['Dynamic Hedge'][0] = num_dj_fut +  my_df['Dynamic Hedge'][0]
+    my_df['Cum_Quantity'] = my_df['Dynamic Hedge'].cumsum()
+    # plot risk-return profile of un-hedged portfolio
+    pylab.plot(my_df['Un-Hedged_Port_Returns'], '-b', label='Un_Hedged Portfolio Returns')
+    pylab.plot(risks["Un-hedged_Port_Risk"], '-r', label='Un_Hedged Portfolio Risk')
+    pylab.legend(loc='upper left')
+    pylab.title('Risk-Return Profile of Un-Hedged Short Put Portfolio')
+    pylab.xlabel('day(s)')
+    pylab.ylabel('Returns/Risk')
+    pylab.xticks(rotation=90)
+    pylab.show()
+    
+    # plot risk-return profile of hedged portfolio
+    pylab.plot(my_df['Hedged_Port_Returns'], '-b', label='Hedged Portfolio Returns')
+    pylab.plot(risks["Hedged_Port_Risk"], '-r', label='Hedged Portfolio Risk')
+    pylab.legend(loc='upper left')
+    pylab.title('Risk-Return Profile of Hedged Short Put Portfolio')
+    pylab.xlabel('day(s)')
+    pylab.ylabel('Returns/Risk')
+    pylab.xticks(rotation=90)
+    pylab.show()
+    
+    # plot delta of the portfolio 
+    pylab.plot(my_df['delta_hedge_position'], '-b', label='Portfolio Delta')
+    pylab.legend(loc='best')
+    pylab.title('Delta of the Portfolio ')
+    pylab.xlabel('day(s)')
+    pylab.ylabel('Deltas')
+    pylab.xticks(rotation=90)
+    pylab.show()
+    
+    # plot the cumulative quantity of futures contracts that were required to 
+    #dynamically hedge the portfolio
+    pylab.plot(my_df['Cum_Quantity'], '-b', label='Quantity of Futures Contracts')
+    pylab.legend(loc='best')
+    pylab.title('Cumulative Quantity of Futures Contracts')
+    pylab.xlabel('day(s)')
+    pylab.ylabel('Futures Contracts')
+    pylab.xticks(rotation=90)
+    pylab.show()
+    
+    #Calculate the required kpi's
+    rk_rt_Profile = Output(results)    
+    z = rk_rt_Profile.generate_output()
+    z.loc['Average Daily Return'] = results.mean(axis=0)
+    z.loc['Average Weekly Return'] = results.resample('W').mean().mean(axis=0)
+    z.loc['Percentage of Positive Days'] = results.apply(lambda x: (float(len(x[x > 0])) / float(len(results)))*100)
+    z.loc['Daily Std Dev'] = results.std(axis=0)
+    print "\n====Risk and Return Profiles of the Hedged and Un-hedged Portfolios====\n"
+    print z
+    kp1 = z.loc[['Average Daily Return','Average Weekly Return','Daily Std Dev','Lake Ratio']]
+    kp2 = z.loc[['Percentage of Positive Days']]
+    #Plot the kpi's
+    kp1.plot.bar()
+    kp2.plot.bar()
+    plt.show()
+    
+        

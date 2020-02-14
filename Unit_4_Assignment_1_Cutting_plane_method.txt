@@ -1,0 +1,62 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Feb 04 22:56:59 2018
+
+@author: win8
+"""
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Feb 04 09:54:23 2018
+
+@author: win8
+"""
+"""
+Assignment: Branch and Bound
+Problem 1:  Cutting plane method  
+
+Solve the following problem using cutting plane method:
+
+min f = 4x1 + 5x2
+    x1 + 4x2 >=5
+    3x1 + 2x2 >=7
+    x1,x2>=0, both integer
+
+Use Python for the implementation for your Algorithm.  Adhere to the code guidelines mentioned below.
+"""
+# To install coinor.cuppy use
+# Install with easy_install coinor.cuppy
+
+
+
+
+# Import the relevant modules
+try:
+    from coinor.cuppy.cuttingPlanes import solve, gomoryCut
+    from coinor.cuppy.milpInstance import MILPInstance
+except ImportError:
+    from src.cuppy.cuttingPlanes import solve, gomoryCut
+    from src.cuppy.milpInstance import MILPInstance
+
+numVars = 2
+numCons = 2
+
+# Assign the variables coefficients matrix, A:
+A = [[ 1,     4],
+     [ 3,    2] ]
+
+# Assign the right hand side constants vector, b:
+b = [5,
+     7]
+
+c = [-1, 1]
+
+sense = ('Min', '>=')
+integerIndices = [0, 1]
+
+m = MILPInstance(A = A, b = b, c = c,sense = sense, integerIndices = integerIndices,
+                     numVars = numVars)
+
+#Solve the problem
+solve(m, whichCuts = [(gomoryCut, {})], display = True, debug_print = True)
+
